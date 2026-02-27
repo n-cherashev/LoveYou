@@ -4,10 +4,33 @@ const CustomCursor: React.FC = () => {
   const [position, setPosition] = useState({ x: -100, y: -100 });
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    // Detect mobile devices
+    const checkMobile = () => {
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      setIsMobile(isTouchDevice);
+    };
+    
+    checkMobile();
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) return; // Don't track mouse on mobile
+
     const handleMouseMove = (e: MouseEvent) => {
       setPosition({ x: e.clientX, y: e.clientY });
+      setIsVisible(true);
+    };
+
+    const handleMouseLeave = () => {
+      setIsVisible(false);
+    };
+
+    const handleMouseEnter = () => {
+      setIsVisible(true);
     };
 
     const handleMouseDown = () => setIsClicking(true);
@@ -26,28 +49,51 @@ const CustomCursor: React.FC = () => {
       }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('mouseover', handleMouseOver);
+    // Hide cursor on touch start (mobile interaction)
+    const handleTouchStart = () => {
+      setIsVisible(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener('mouseenter', handleMouseEnter);
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseover', handleMouseOver);
+    document.addEventListener('touchstart', handleTouchStart);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('mouseover', handleMouseOver);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('mouseenter', handleMouseEnter);
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseover', handleMouseOver);
+      document.removeEventListener('touchstart', handleTouchStart);
     };
-  }, []);
+  }, [isMobile]);
+
+  // Don't render cursor on mobile
+  if (isMobile) {
+    return (
+      <style>{`
+        * {
+          cursor: auto !important;
+        }
+      `}</style>
+    );
+  }
 
   return (
     <>
       {/* Main cursor dot */}
       <div
-        className="fixed pointer-events-none z-[9999] mix-blend-screen"
+        className="fixed pointer-events-none z-[9999] mix-blend-screen transition-opacity duration-200"
         style={{
           left: position.x,
           top: position.y,
           transform: 'translate(-50%, -50%)',
+          opacity: isVisible ? 1 : 0,
         }}
       >
         <div
@@ -69,11 +115,12 @@ const CustomCursor: React.FC = () => {
 
       {/* Outer ring */}
       <div
-        className="fixed pointer-events-none z-[9998]"
+        className="fixed pointer-events-none z-[9998] transition-opacity duration-200"
         style={{
           left: position.x,
           top: position.y,
           transform: 'translate(-50%, -50%)',
+          opacity: isVisible ? 1 : 0,
         }}
       >
         <div
@@ -91,11 +138,12 @@ const CustomCursor: React.FC = () => {
 
       {/* Trail particles */}
       <div
-        className="fixed pointer-events-none z-[9997]"
+        className="fixed pointer-events-none z-[9997] transition-opacity duration-200"
         style={{
           left: position.x,
           top: position.y,
           transform: 'translate(-50%, -50%)',
+          opacity: isVisible ? 1 : 0,
         }}
       >
         {[...Array(4)].map((_, i) => (
@@ -113,10 +161,12 @@ const CustomCursor: React.FC = () => {
         ))}
       </div>
 
-      {/* Hide default cursor */}
+      {/* Hide default cursor on desktop only */}
       <style>{`
-        * {
-          cursor: none !important;
+        @media (min-width: 769px) {
+          * {
+            cursor: none !important;
+          }
         }
         @media (max-width: 768px) {
           * {
