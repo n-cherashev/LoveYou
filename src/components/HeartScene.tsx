@@ -77,7 +77,6 @@ const SceneContent: React.FC<SceneContentProps> = ({
           key={heart.id}
           heart={heart}
           onExplode={onExplode}
-          mousePosition={mousePosition}
           globalColor={globalColor}
         />
       ))}
@@ -171,6 +170,7 @@ const HeartScene: React.FC<HeartSceneProps> = ({ onHeartCountChange }) => {
       rotationSpeed: Math.random() * Math.PI * 2,
       color: globalColor.getStyle(),
       scale: 0.8 + Math.random() * 0.4,
+      direction: 'in' as 'in' | 'out',
     };
   }, [globalColor]);
 
@@ -214,7 +214,12 @@ const HeartScene: React.FC<HeartSceneProps> = ({ onHeartCountChange }) => {
 
   const handleExplode = useCallback(
     (id: number, position: [number, number, number], color: string) => {
-      setHearts((prev) => prev.filter((h) => h.id !== id));
+      // Remove the clicked heart and spawn a new one at the edge
+      setHearts((prev) => {
+        const filtered = prev.filter((h) => h.id !== id);
+        // Spawn a new heart to replace the popped one
+        return [...filtered, createHeart()];
+      });
 
       const newParticles: Particle[] = [];
       for (let i = 0; i < PARTICLES_PER_EXPLOSION; i++) {
@@ -241,7 +246,7 @@ const HeartScene: React.FC<HeartSceneProps> = ({ onHeartCountChange }) => {
       // Play sound effect
       playPopSound();
     },
-    [playPopSound]
+    [playPopSound, createHeart]
   );
 
   // Handle mouse movement for parallax
@@ -287,27 +292,50 @@ const HeartScene: React.FC<HeartSceneProps> = ({ onHeartCountChange }) => {
         lastTime = time;
       }
 
-      // Update heart positions – move from screen edges towards the center text
+      // Update heart positions – move from screen edges towards the center text, then bounce back
       setHearts((prev) =>
-        prev
-          .map((heart) => {
-            const dirX = -heart.x;
-            const dirY = -heart.y;
-            const dirZ = -heart.z;
-            const length = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
-            const step = heart.speed * 0.028;
-
-            return {
-              ...heart,
-              x: heart.x + (dirX / length) * step,
-              y: heart.y + (dirY / length) * step,
-              z: heart.z + (dirZ / length) * step,
-            };
-          })
-          .filter((heart) => {
-            const dist2 = heart.x * heart.x + heart.y * heart.y + heart.z * heart.z;
-            return dist2 > 0.6;
-          })
+        prev.map((heart) => {
+          const dirX = -heart.x;
+          const dirY = -heart.y;
+          const dirZ = -heart.z;
+          const length = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
+          
+          // Slower speed (reduced from 0.028 to 0.012)
+          const step = heart.speed * 0.012;
+          
+          let newX = heart.x + (dirX / length) * step;
+          let newY = heart.y + (dirY / length) * step;
+          let newZ = heart.z + (dirZ / length) * step;
+          
+          // Calculate distance from center
+          const dist = Math.sqrt(newX * newX + newY * newY + newZ * newZ);
+          
+          // If heart gets too close to center (text area), reverse direction
+          const minDist = 4; // Distance from center where hearts turn back
+          const maxDist = 14; // Edge of screen area
+          
+          if (dist < minDist) {
+            // Reverse direction - move away from center
+            heart.direction = 'out';
+          } else if (dist > maxDist) {
+            // At edge - move towards center
+            heart.direction = 'in';
+          }
+          
+          // Apply movement based on direction
+          if (heart.direction === 'out') {
+            newX = heart.x - (dirX / length) * step;
+            newY = heart.y - (dirY / length) * step;
+            newZ = heart.z - (dirZ / length) * step;
+          }
+          
+          return {
+            ...heart,
+            x: newX,
+            y: newY,
+            z: newZ,
+          };
+        })
       );
 
       animationFrameId = requestAnimationFrame(animate);

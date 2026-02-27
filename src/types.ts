@@ -9,6 +9,7 @@ export interface Heart {
   rotationSpeed: number;
   color: string;
   scale: number;
+  direction: 'in' | 'out';
 }
 
 export interface Particle {

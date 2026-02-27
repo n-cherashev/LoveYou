@@ -7,7 +7,6 @@ import { SIZE_MAP } from '../types';
 interface Heart3DProps {
   heart: HeartType;
   onExplode: (id: number, position: [number, number, number], color: string) => void;
-  mousePosition: [number, number];
   globalColor: THREE.Color;
 }
 
@@ -27,7 +26,7 @@ function createHeartShape() {
   return shape;
 }
 
-const Heart3D: React.FC<Heart3DProps> = ({ heart, onExplode, mousePosition, globalColor }) => {
+const Heart3D: React.FC<Heart3DProps> = ({ heart, onExplode, globalColor }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
